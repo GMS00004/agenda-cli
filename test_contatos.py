@@ -9,6 +9,7 @@ from contatos import (
     adicionar_contato,
     buscar_contato,
     listar_contatos,
+    listar_por_categoria,
     remover_contato,
 )
 
@@ -52,6 +53,7 @@ class TestAdicionarContato(BaseContatosTest):
         self.assertEqual(contato["nome"], "Maria Silva")
         self.assertEqual(contato["telefone"], "(11) 99999-0000")
         self.assertEqual(contato["email"], "maria@example.com")
+        self.assertEqual(contato["categoria"], "outros")
         self.assertEqual(self.storage.dados, [contato])
 
     def test_registra_cadastrado_em_como_iso_8601(self) -> None:
@@ -106,6 +108,50 @@ class TestAdicionarContato(BaseContatosTest):
             adicionar_contato("", "11999990000", "joao@example.com")
         self.assertEqual(self.storage.dados, [])
 
+    def test_categoria_padrao_e_outros(self) -> None:
+        contato = adicionar_contato("Ana", "11999990000", "ana@example.com")
+        self.assertEqual(contato["categoria"], "outros")
+
+    def test_adiciona_com_categoria_trabalho(self) -> None:
+        contato = adicionar_contato(
+            "Ana", "11999990000", "ana@example.com", categoria="trabalho"
+        )
+        self.assertEqual(contato["categoria"], "trabalho")
+        self.assertEqual(self.storage.dados[0]["categoria"], "trabalho")
+
+    def test_categoria_case_insensitive(self) -> None:
+        contato = adicionar_contato(
+            "Ana", "11999990000", "ana@example.com", categoria="TRABALHO"
+        )
+        self.assertEqual(contato["categoria"], "trabalho")
+
+    def test_categoria_familia_com_acento(self) -> None:
+        contato = adicionar_contato(
+            "Ana", "11999990000", "ana@example.com", categoria="família"
+        )
+        self.assertEqual(contato["categoria"], "família")
+
+    def test_rejeita_categoria_invalida(self) -> None:
+        with self.assertRaises(ValueError):
+            adicionar_contato(
+                "Ana", "11999990000", "ana@example.com", categoria="vip"
+            )
+        self.assertEqual(self.storage.dados, [])
+
+    def test_rejeita_categoria_vazia(self) -> None:
+        with self.assertRaises(ValueError):
+            adicionar_contato(
+                "Ana", "11999990000", "ana@example.com", categoria=""
+            )
+
+    def test_rejeita_familia_sem_acento(self) -> None:
+        # Sem acento não é aceito: o menu numerado evita essa entrada,
+        # mas a API deve continuar rigorosa com os valores oficiais.
+        with self.assertRaises(ValueError):
+            adicionar_contato(
+                "Ana", "11999990000", "ana@example.com", categoria="familia"
+            )
+
 
 class TestListarContatos(BaseContatosTest):
     def test_lista_vazia_quando_sem_contatos(self) -> None:
@@ -141,6 +187,72 @@ class TestBuscarContato(BaseContatosTest):
 
     def test_busca_sem_correspondencia_retorna_lista_vazia(self) -> None:
         self.assertEqual(buscar_contato("Pedro"), [])
+
+
+class TestBuscarPorCategoria(BaseContatosTest):
+    def setUp(self) -> None:
+        super().setUp()
+        adicionar_contato(
+            "Ana Silva", "11999990000", "ana@example.com", categoria="trabalho"
+        )
+        adicionar_contato(
+            "Ana Costa", "21987654321", "ana.c@example.com", categoria="amigos"
+        )
+        adicionar_contato(
+            "Bruno", "31988887777", "bruno@example.com", categoria="trabalho"
+        )
+
+    def test_filtra_por_categoria(self) -> None:
+        resultado = buscar_contato("ana", categoria="trabalho")
+        self.assertEqual(len(resultado), 1)
+        self.assertEqual(resultado[0]["nome"], "Ana Silva")
+
+    def test_sem_filtro_mantem_comportamento_antigo(self) -> None:
+        resultado = buscar_contato("ana")
+        nomes = [c["nome"] for c in resultado]
+        self.assertIn("Ana Silva", nomes)
+        self.assertIn("Ana Costa", nomes)
+
+    def test_filtro_com_categoria_case_insensitive(self) -> None:
+        resultado = buscar_contato("ana", categoria="TRABALHO")
+        self.assertEqual(len(resultado), 1)
+
+    def test_categoria_invalida_levanta_erro(self) -> None:
+        with self.assertRaises(ValueError):
+            buscar_contato("ana", categoria="vip")
+
+    def test_busca_sem_resultados_na_categoria(self) -> None:
+        self.assertEqual(buscar_contato("ana", categoria="família"), [])
+
+
+class TestListarPorCategoria(BaseContatosTest):
+    def setUp(self) -> None:
+        super().setUp()
+        adicionar_contato(
+            "Ana", "11999990000", "ana@example.com", categoria="trabalho"
+        )
+        adicionar_contato(
+            "Bruno", "21987654321", "bruno@example.com", categoria="amigos"
+        )
+        adicionar_contato(
+            "Carla", "31988887777", "carla@example.com", categoria="trabalho"
+        )
+
+    def test_retorna_apenas_da_categoria(self) -> None:
+        resultado = listar_por_categoria("trabalho")
+        nomes = [c["nome"] for c in resultado]
+        self.assertEqual(sorted(nomes), ["Ana", "Carla"])
+
+    def test_categoria_sem_contatos_retorna_lista_vazia(self) -> None:
+        self.assertEqual(listar_por_categoria("família"), [])
+
+    def test_categoria_invalida_levanta_erro(self) -> None:
+        with self.assertRaises(ValueError):
+            listar_por_categoria("vip")
+
+    def test_aceita_categoria_em_caixa_diferente(self) -> None:
+        resultado = listar_por_categoria("TRABALHO")
+        self.assertEqual(len(resultado), 2)
 
 
 class TestRemoverContato(BaseContatosTest):

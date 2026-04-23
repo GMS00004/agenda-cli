@@ -7,6 +7,10 @@ from armazenamento import salvar_contatos, carregar_contatos
 from utilidades import formatar_telefone
 
 
+CATEGORIAS_VALIDAS: tuple[str, ...] = ("trabalho", "família", "amigos", "outros")
+CATEGORIA_PADRAO: str = "outros"
+
+
 def _validar_nome(nome: str) -> str:
     """Valida o nome informado e devolve a versão sem espaços nas pontas.
 
@@ -37,7 +41,28 @@ def _validar_email(email: str) -> str:
     return email_limpo
 
 
-def adicionar_contato(nome: str, telefone: str, email: str) -> dict:
+def _validar_categoria(categoria: str) -> str:
+    """Valida a categoria e devolve a forma canônica (lowercase).
+
+    Aceita qualquer combinação de caixa (ex.: "TRABALHO" vira "trabalho").
+    Rejeita strings vazias ou valores fora de `CATEGORIAS_VALIDAS`.
+    """
+    categoria_limpa = categoria.strip().lower()
+    if not categoria_limpa:
+        raise ValueError("A categoria não pode ser vazia.")
+    if categoria_limpa not in CATEGORIAS_VALIDAS:
+        raise ValueError(
+            "Categoria inválida. Use: trabalho, família, amigos ou outros."
+        )
+    return categoria_limpa
+
+
+def adicionar_contato(
+    nome: str,
+    telefone: str,
+    email: str,
+    categoria: str = CATEGORIA_PADRAO,
+) -> dict:
     """Adiciona um novo contato à agenda e persiste no arquivo.
 
     Valida os campos antes de salvar:
@@ -45,6 +70,8 @@ def adicionar_contato(nome: str, telefone: str, email: str) -> dict:
     - `telefone`: formatado por `utilidades.formatar_telefone`
       (requer exatamente 11 dígitos numéricos).
     - `email`: precisa conter '@' e pelo menos um '.' após o '@'.
+    - `categoria`: precisa ser uma das quatro categorias oficiais
+      (trabalho, família, amigos, outros). Default: "outros".
 
     Também registra o campo `cadastrado_em` com o timestamp ISO 8601
     (UTC) do momento de criação.
@@ -52,12 +79,14 @@ def adicionar_contato(nome: str, telefone: str, email: str) -> dict:
     nome_validado = _validar_nome(nome)
     telefone_formatado = formatar_telefone(telefone)
     email_validado = _validar_email(email)
+    categoria_validada = _validar_categoria(categoria)
 
     contatos = carregar_contatos()
     novo_contato = {
         "nome": nome_validado,
         "telefone": telefone_formatado,
         "email": email_validado,
+        "categoria": categoria_validada,
         "cadastrado_em": datetime.now(timezone.utc).isoformat(),
     }
     contatos.append(novo_contato)
@@ -70,14 +99,31 @@ def listar_contatos() -> list[dict]:
     return carregar_contatos()
 
 
-def buscar_contato(nome: str) -> list[dict]:
+def buscar_contato(nome: str, categoria: Optional[str] = None) -> list[dict]:
     """Busca contatos cujo nome contenha o termo informado.
 
-    A comparação não diferencia maiúsculas de minúsculas.
+    A comparação por nome não diferencia maiúsculas de minúsculas e
+    aceita correspondências parciais. Quando `categoria` é informada,
+    também filtra os resultados por categoria (precisa ser uma das
+    categorias oficiais, caso contrário levanta `ValueError`).
     """
     contatos = carregar_contatos()
     termo = nome.lower()
-    return [c for c in contatos if termo in c["nome"].lower()]
+    resultados = [c for c in contatos if termo in c["nome"].lower()]
+    if categoria is not None:
+        categoria_validada = _validar_categoria(categoria)
+        resultados = [c for c in resultados if c["categoria"] == categoria_validada]
+    return resultados
+
+
+def listar_por_categoria(categoria: str) -> list[dict]:
+    """Retorna todos os contatos pertencentes à categoria informada.
+
+    A categoria precisa ser uma das categorias oficiais (trabalho,
+    família, amigos, outros); caso contrário, levanta `ValueError`.
+    """
+    categoria_validada = _validar_categoria(categoria)
+    return [c for c in carregar_contatos() if c["categoria"] == categoria_validada]
 
 
 def remover_contato(nome: str) -> Optional[dict]:

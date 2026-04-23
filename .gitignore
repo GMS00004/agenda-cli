@@ -1,0 +1,64 @@
+# Caches e bytecode do Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Distribuição e empacotamento
+build/
+dist/
+*.egg-info/
+*.egg
+.eggs/
+wheels/
+pip-wheel-metadata/
+
+# Ambientes virtuais
+venv/
+.venv/
+env/
+.env/
+ENV/
+
+# Variáveis de ambiente e segredos
+.env
+.env.local
+*.pem
+*.key
+
+# Arquivos de IDE e editores
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Arquivos do sistema operacional
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Cobertura de testes e relatórios
+.coverage
+.coverage.*
+htmlcov/
+.pytest_cache/
+.tox/
+.nox/
+coverage.xml
+*.cover
+
+# Verificadores de tipo e linters
+.mypy_cache/
+.ruff_cache/
+.pyre/
+
+# Arquivos de dados locais (não versionar)
+*.log
+contatos.json
+
+# Notebooks Jupyter
+.ipynb_checkpoints/

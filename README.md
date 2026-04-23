@@ -42,3 +42,6 @@ Cada contato é armazenado como um objeto JSON:
     "email": "maria@example.com"
 }
 ```
+
+## Autor
+Projeto desenvolvido como exercício de aprendizado de Claude Code por Guilherme.

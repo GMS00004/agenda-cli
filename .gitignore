@@ -62,3 +62,9 @@ contatos.json
 
 # Notebooks Jupyter
 .ipynb_checkpoints/
+
+# Configurações locais do Claude Code
+.claude/
+
+# Gerado automaticamente pelas tools locais
+AGENTS.md
